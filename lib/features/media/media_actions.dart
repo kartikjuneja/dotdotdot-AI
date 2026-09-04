@@ -122,7 +122,12 @@ class MediaActions extends ConsumerWidget {
     );
 
     try {
-      final provider = await resolveAiProvider(ref, modelId: modelId);
+      final provider = await resolveAiProvider(
+        catalog: await ref.read(modelCatalogProvider.future),
+        providers: ref.read(providerRepositoryProvider),
+        vault: ref.read(keyVaultProvider),
+        modelId: modelId,
+      );
       if (provider == null) {
         throw StateError('Add a provider API key in Settings first.');
       }

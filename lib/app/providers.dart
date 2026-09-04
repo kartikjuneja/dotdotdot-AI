@@ -131,14 +131,18 @@ final driveStatusProvider = StreamProvider((ref) {
 });
 
 /// Resolves an [AiProvider] for a catalog model using an enabled account + vault key.
-Future<AiProvider?> resolveAiProvider(
-  Ref ref, {
+///
+/// Accepts repositories (not [Ref]/[WidgetRef]) so both notifiers and widgets
+/// can call this without a Riverpod type mismatch.
+Future<AiProvider?> resolveAiProvider({
+  required ModelCatalog catalog,
+  required ProviderRepository providers,
+  required KeyVault vault,
   required String modelId,
   String? preferredAccountId,
 }) async {
-  final catalog = await ref.read(modelCatalogProvider.future);
   final model = catalog.find(modelId);
-  final accounts = await ref.read(providerRepositoryProvider).list();
+  final accounts = await providers.list();
   final enabled = accounts.where((a) => a.enabled && !a.isDeleted).toList();
   if (enabled.isEmpty) return null;
 
@@ -156,7 +160,7 @@ Future<AiProvider?> resolveAiProvider(
       : enabled.first;
   if (account == null) return null;
 
-  final key = await ref.read(keyVaultProvider).readKey(account.keyVaultRef);
+  final key = await vault.readKey(account.keyVaultRef);
   if (key == null || key.trim().isEmpty) return null;
   return ProviderFactory.create(account, key);
 }

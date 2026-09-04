@@ -1,13 +1,14 @@
 # Desktop platforms (Windows / macOS / Linux)
 
-This environment had no Flutter SDK on PATH, and the `project-finance` shell only included Android, iOS, and Web.
-
-After installing Flutter, generate the missing desktop runners from the project root:
+Runners are generated. From the project root, with Flutter on PATH:
 
 ```bash
-flutter create . --platforms=windows,macos,linux
 flutter pub get
 flutter run -d windows
+# or: flutter run -d macos
+# or: flutter run -d linux
 ```
 
-Do not overwrite `lib/`, `pubspec.yaml`, or `docs/`.
+Release binaries do **not** need administrator/root if you run them from a user-writable folder (portable). An installer that writes to `Program Files` or `/Applications` would need elevation; this project ships no such installer.
+
+See the root [README](../README.md) deploy section.

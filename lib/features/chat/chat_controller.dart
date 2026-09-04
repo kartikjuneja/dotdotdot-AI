@@ -156,7 +156,9 @@ class ChatController extends FamilyNotifier<ChatViewState, String> {
 
     try {
       final provider = await resolveAiProvider(
-        ref,
+        catalog: await ref.read(modelCatalogProvider.future),
+        providers: ref.read(providerRepositoryProvider),
+        vault: ref.read(keyVaultProvider),
         modelId: chat.modelId,
         preferredAccountId: chat.providerAccountId,
       );

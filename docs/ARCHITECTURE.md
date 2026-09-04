@@ -2,7 +2,7 @@
 
 Local-first Flutter app: **BYOK** (bring your own keys), works offline, all platforms (Android, iOS, Windows, macOS, Linux, Web). No mandatory account. Google Drive is an optional sync overlay; on-device data remains source of truth.
 
-**Implementation status:** Phases 0–8 are implemented in this repo. Desktop runners (`windows/`, `macos/`, `linux/`) need `flutter create . --platforms=...` once the Flutter SDK is installed (see [SDK.md](SDK.md)).
+**Implementation status:** Phases 0–8 are implemented in this repo. Desktop runners (`windows/`, `macos/`, `linux/`) are generated.
 
 ## Layers (`lib/`)
 

@@ -1,14 +1,14 @@
-# Flutter SDK setup (this environment)
+# Flutter SDK setup
 
 ## Status
 
-The Flutter SDK is **not on PATH** in this environment. Install Flutter locally before running the app, then use the commands below.
+Desktop runners (`windows/`, `macos/`, `linux/`) are in the repo. Install the Flutter SDK locally, then run from the project root.
 
 ## Install Flutter
 
-1. Download the stable SDK for Windows from [flutter.dev/docs/get-started/install/windows](https://docs.flutter.dev/get-started/install/windows).
-2. Extract to a path without spaces/admin requirements if possible (e.g. `%USERPROFILE%\dev\flutter`).
-3. Add `flutter\bin` to your user `PATH`.
+1. Download the stable SDK from [flutter.dev/docs/get-started/install](https://docs.flutter.dev/docs/get-started/install).
+2. Extract to a path without spaces (e.g. `%USERPROFILE%\dev\flutter` on Windows — no admin required).
+3. Add `flutter\bin` (or `flutter/bin`) to your **user** `PATH`.
 4. Open a new terminal and verify:
 
 ```bash
@@ -16,22 +16,12 @@ flutter --version
 flutter doctor
 ```
 
-Pin the documented SDK version to whatever `flutter --version` reports on this machine. Prefer that pin over global upgrades when possible.
+This repo was last built against Flutter **3.47.x** (Dart 3.13). Prefer the current stable channel.
 
 ## After install — this repo
 
-Desktop platform folders may be missing until generated. From the project root (`dotdotdot-AI`):
-
 ```bash
-flutter create . --platforms=windows,macos,linux
 flutter pub get
-```
-
-`flutter create .` adds missing platform shells without wiping existing `lib/` / `pubspec.yaml` when run carefully in an already-initialized package. Prefer this once Flutter is available; earlier bootstrap may also copy shells from another project.
-
-## Run targets
-
-```bash
 flutter run -d chrome
 flutter run -d windows
 ```
@@ -40,6 +30,6 @@ Also valid once device tooling is ready: Android / iOS / macOS / Linux as listed
 
 ## Notes
 
-- `flutter pub get` needs network for pub.dev; if blocked, document an offline vendor approach.
-- Dart MCP may be unavailable here — use CLI `flutter analyze` / `flutter test` when the SDK is installed.
+- `flutter pub get` needs network for pub.dev.
 - See [ARCHITECTURE.md](ARCHITECTURE.md) and [PLAN.md](PLAN.md) for app design.
+- Deploy / GitHub Pages: see the root [README](../README.md).
