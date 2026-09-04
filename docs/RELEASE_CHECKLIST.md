@@ -33,20 +33,23 @@ Use this before shipping a store/web build. Run `flutter create . --platforms=wi
 
 - [ ] `web/index.html` / `web/manifest.json` title/name = DotDotDot AI
 - [ ] `flutter build web` succeeds
-- [ ] Hosted under correct base href if not at domain root
+- [ ] Hosted under correct base href if not at domain root (`--base-href /<repo>/` on GitHub Pages)
 - [ ] Sembast web persistence / encrypted fallback note understood for the deploy target
 - [ ] Smoke in Chrome: chat list, settings, catalog
+- [ ] GitHub Pages: Settings → Pages → Source = GitHub Actions; hash URLs (`/#/…`) work
+- [ ] Browser CORS: confirm the chosen provider (OpenRouter is the reliable web path)
 
 ## Windows (after `flutter create`)
 
-- [ ] Desktop folder generated; `flutter run -d windows` works
+- [x] Desktop folder generated (`windows/` runner is in the repo)
+- [ ] `flutter run -d windows` works
 - [ ] `flutter build windows` succeeds
-- [ ] App icon / window title acceptable for release
+- [x] App icon / window title acceptable for release (window title **DotDotDot**)
 - [ ] File/media paths under app documents work on a clean machine
 - [ ] Optional: code signing / MSIX packaging if distributing outside sideload
 
 ## macOS / Linux (optional)
 
-- [ ] Generated via `flutter create . --platforms=macos,linux`
+- [x] Generated via `flutter create . --platforms=macos,linux`
 - [ ] `flutter build macos` / `flutter build linux` as needed
-- [ ] Entitlements / sandbox notes reviewed for network + secure storage
+- [x] Entitlements / sandbox notes reviewed for network + secure storage (macOS has `network.client`)

@@ -1,9 +1,8 @@
 # macOS
 
-Generate the macOS runner after Flutter is installed:
-
 ```bash
-flutter create . --platforms=macos
+flutter run -d macos
+flutter build macos
 ```
 
-See [windows/README.md](../windows/README.md).
+Network is already allowed in DebugProfile entitlements. See [windows/README.md](../windows/README.md).
