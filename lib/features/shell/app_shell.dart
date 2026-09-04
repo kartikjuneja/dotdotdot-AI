@@ -48,7 +48,6 @@ class AppShell extends ConsumerWidget {
                 selectedIndex: selected,
                 onSelect: (i) => _goIndex(context, i),
                 onNewChat: () => openNewChat(context, ref),
-                showChatList: selected == 0,
               ),
               VerticalDivider(
                 width: 1,
@@ -68,12 +67,11 @@ class AppShell extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               actions: [
-                if (selected == 0)
-                  IconButton(
-                    tooltip: 'New chat',
-                    onPressed: () => openNewChat(context, ref),
-                    icon: const Icon(Icons.edit_outlined),
-                  ),
+                IconButton(
+                  tooltip: 'New chat',
+                  onPressed: () => openNewChat(context, ref),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
               ],
             ),
       drawer: wide
@@ -90,7 +88,6 @@ class AppShell extends ConsumerWidget {
                     Navigator.of(context).pop();
                     openNewChat(context, ref);
                   },
-                  showChatList: true,
                 ),
               ),
             ),
@@ -113,18 +110,16 @@ class _Sidebar extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelect,
     required this.onNewChat,
-    required this.showChatList,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onSelect;
   final VoidCallback onNewChat;
-  final bool showChatList;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: showChatList ? 300 : 220,
+      width: 300,
       child: Material(
         color: DotColors.ink,
         child: SafeArea(
@@ -132,7 +127,6 @@ class _Sidebar extends StatelessWidget {
             selectedIndex: selectedIndex,
             onSelect: onSelect,
             onNewChat: onNewChat,
-            showChatList: showChatList,
           ),
         ),
       ),
@@ -145,13 +139,11 @@ class _SidebarContent extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelect,
     required this.onNewChat,
-    required this.showChatList,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onSelect;
   final VoidCallback onNewChat;
-  final bool showChatList;
 
   @override
   Widget build(BuildContext context) {
@@ -208,22 +200,19 @@ class _SidebarContent extends StatelessWidget {
           selected: selectedIndex == 3,
           onTap: () => onSelect(3),
         ),
-        if (showChatList && selectedIndex == 0) ...[
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Text(
-              'Recent',
-              style: TextStyle(
-                color: DotColors.amber,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.6,
-              ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Text(
+            'Recent',
+            style: TextStyle(
+              color: DotColors.amber,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.6,
             ),
           ),
-          const Expanded(child: ChatListPane()),
-        ] else
-          const Spacer(),
+        ),
+        const Expanded(child: ChatListPane()),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
           child: TextButton(

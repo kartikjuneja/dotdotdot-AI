@@ -1,4 +1,5 @@
 import 'package:dotdotdot_ai/ai/catalog/model_catalog.dart';
+import 'package:dotdotdot_ai/app/providers.dart';
 import 'package:dotdotdot_ai/domain/models/model_info.dart';
 import 'package:dotdotdot_ai/domain/models/provider_account.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +16,13 @@ void main() {
       expect(all, isNotEmpty);
       expect(catalog.find('gpt-4o'), isNotNull);
       expect(catalog.find('gpt-4o')!.capabilities, contains(ModelCapability.chat));
+      expect(catalog.find('gemini-3.6-flash'), isNotNull);
+      expect(catalog.find('gemini-2.0-flash'), isNull);
+      expect(catalog.find('gpt-image-2'), isNotNull);
+      expect(
+        catalog.find('gemini-3.1-flash-image')!.capabilities,
+        contains(ModelCapability.image),
+      );
     });
 
     test('byCapability filters chat models', () async {
@@ -43,6 +51,14 @@ void main() {
         image.any((m) => m.id == 'dall-e-3'),
         isTrue,
       );
+      expect(
+        image.any((m) => m.id == 'gpt-image-2'),
+        isTrue,
+      );
+      expect(
+        image.any((m) => m.id == 'gemini-3.1-flash-image'),
+        isTrue,
+      );
     });
 
     test('byCapability returns empty for unused capability when absent', () async {
@@ -61,6 +77,25 @@ void main() {
 
       expect(catalog.byCapability(ModelCapability.embedding), isEmpty);
       expect(catalog.byCapability(ModelCapability.chat), hasLength(1));
+    });
+
+    test('defaultChatModelId prefers models for enabled providers', () async {
+      final catalog = ModelCatalog();
+      await catalog.load();
+      final id = defaultChatModelId(
+        catalog,
+        accounts: [
+          ProviderAccount(
+            id: 'g',
+            providerType: ProviderType.gemini,
+            displayName: 'Gemini',
+            keyVaultRef: 'vault',
+            enabled: true,
+            updatedAt: DateTime.utc(2026, 9, 1),
+          ),
+        ],
+      );
+      expect(id, contains('gemini'));
     });
   });
 }

@@ -76,7 +76,11 @@ class PlansPage extends ConsumerWidget {
             error: (e, _) => Center(child: Text('$e')),
             data: (plans) {
               if (plans.isEmpty) {
-                return const Center(child: Text('No root plans yet.'));
+                return const Center(
+                  child: Text(
+                    'No root plans yet. Create one here, or type /plan in any chat.',
+                  ),
+                );
               }
               return ListView.separated(
                 padding: const EdgeInsets.all(16),

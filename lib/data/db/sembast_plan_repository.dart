@@ -21,6 +21,16 @@ class SembastPlanRepository implements PlanRepository {
   }
 
   @override
+  Future<List<PlanNode>> listAll({bool includeDeleted = false}) async {
+    final finder = softDeleteAwareFinder(
+      includeDeleted: includeDeleted,
+      sortOrders: [SortOrder('sortOrder'), SortOrder('updatedAt', false)],
+    );
+    final rows = await _store.find(_db, finder: finder);
+    return rows.map((s) => PlanNode.fromJson(mapFromRecord(s))).toList();
+  }
+
+  @override
   Future<List<PlanNode>> listByProject(
     String? projectId, {
     bool includeDeleted = false,
@@ -118,6 +128,18 @@ class SembastPlanRepository implements PlanRepository {
         updatedAt: deletedAt,
       ),
     );
+  }
+
+  @override
+  Stream<List<PlanNode>> watchAll({bool includeDeleted = false}) {
+    final finder = softDeleteAwareFinder(
+      includeDeleted: includeDeleted,
+      sortOrders: [SortOrder('sortOrder'), SortOrder('updatedAt', false)],
+    );
+    return _store.query(finder: finder).onSnapshots(_db).map(
+          (rows) =>
+              rows.map((s) => PlanNode.fromJson(mapFromRecord(s))).toList(),
+        );
   }
 
   @override
