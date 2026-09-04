@@ -6,8 +6,10 @@ import '../../app/theme.dart';
 import '../../domain/models/model_info.dart';
 import '../media/media_actions.dart';
 import 'chat_controller.dart';
+import 'chat_scope_bar.dart';
 import 'message_bubble.dart';
 import 'model_picker.dart';
+import 'slash_command_bar.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({super.key, required this.chatId});
@@ -50,8 +52,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           prev?.isStreaming != next.isStreaming) {
         _scrollToBottom();
       }
-      if (next.composerText.isEmpty && _composer.text.isNotEmpty && !next.isStreaming) {
-        // Keep local controller in sync after successful send.
+      if (next.createdPlanId != null &&
+          next.createdPlanId != prev?.createdPlanId) {
+        final title = next.createdPlanTitle ?? 'Plan';
+        final planId = next.createdPlanId!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved plan “$title”'),
+            action: SnackBarAction(
+              label: 'Open',
+              onPressed: () => context.go('/plans/$planId'),
+            ),
+          ),
+        );
+        notifier.clearCreatedPlanBanner();
       }
     });
 
@@ -75,7 +89,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
 
     final chat = state.chat;
-    final modelId = chat?.modelId ?? 'gpt-4o-mini';
+    final modelId = chat?.modelId ?? 'gemini-3.6-flash';
+    final showSlash = _composer.text.trimLeft().startsWith('/');
 
     return Column(
       children: [
@@ -83,9 +98,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           title: chat?.title ?? 'Chat',
           modelId: modelId,
           onModelSelected: notifier.setModelId,
-          planNodeId: chat?.planNodeId,
-          projectId: chat?.projectId,
         ),
+        if (chat != null) ChatScopeBar(chat: chat),
         if (state.error != null)
           Material(
             color: const Color(0xFFFFE8E6),
@@ -111,13 +125,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ),
         Expanded(
           child: state.messages.isEmpty
-              ? Center(
-                  child: Text(
-                    'Send a message to begin.',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: DotColors.textSecondary,
-                        ),
-                  ),
+              ? _EmptyChatHint(
+                  onGeneratePlan: chat == null
+                      ? null
+                      : () => notifier.sendMessage(overrideText: '/plan'),
                 )
               : ListView.builder(
                   controller: _scroll,
@@ -137,18 +148,80 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             promptHint: _composer.text.trim().isEmpty ? null : _composer.text,
           ),
         ),
+        if (showSlash)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: SlashCommandBar(
+              composerText: _composer.text,
+              onPick: (value) {
+                _composer
+                  ..text = value
+                  ..selection = TextSelection.collapsed(offset: value.length);
+                notifier.setComposerText(value);
+                setState(() {});
+              },
+            ),
+          ),
         _Composer(
           controller: _composer,
           enabled: !state.isStreaming && chat != null,
           isStreaming: state.isStreaming,
-          onChanged: notifier.setComposerText,
+          onChanged: (value) {
+            notifier.setComposerText(value);
+            setState(() {});
+          },
           onSend: () async {
             final text = _composer.text;
             _composer.clear();
-            await notifier.sendMessage(text);
+            setState(() {});
+            await notifier.sendMessage(overrideText: text);
           },
         ),
       ],
+    );
+  }
+}
+
+class _EmptyChatHint extends StatelessWidget {
+  const _EmptyChatHint({this.onGeneratePlan});
+
+  final VoidCallback? onGeneratePlan;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Send a message to begin.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: DotColors.textSecondary,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Type /plan to save a course from this chat, or attach a project '
+                'above so its notes are included automatically.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              if (onGeneratePlan != null) ...[
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: onGeneratePlan,
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: const Text('Generate a plan from this chat'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -158,15 +231,11 @@ class _ChatHeader extends StatelessWidget {
     required this.title,
     required this.modelId,
     required this.onModelSelected,
-    this.planNodeId,
-    this.projectId,
   });
 
   final String title;
   final String modelId;
   final ValueChanged<String> onModelSelected;
-  final String? planNodeId;
-  final String? projectId;
 
   @override
   Widget build(BuildContext context) {
@@ -178,24 +247,11 @@ class _ChatHeader extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                if (planNodeId != null || projectId != null)
-                  Text(
-                    [
-                      if (projectId != null) 'Project chat',
-                      if (planNodeId != null) 'Plan-linked',
-                    ].join(' · '),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-              ],
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
           Flexible(
@@ -245,7 +301,7 @@ class _Composer extends StatelessWidget {
                 onSubmitted: enabled ? (_) => onSend() : null,
                 textInputAction: TextInputAction.send,
                 decoration: const InputDecoration(
-                  hintText: 'Message DotDotDot…',
+                  hintText: 'Message, or /plan to save a course…',
                 ),
               ),
             ),

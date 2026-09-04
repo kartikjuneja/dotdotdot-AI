@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../ai/catalog/model_catalog.dart';
 import '../../ai/providers/ai_types.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
@@ -33,10 +34,11 @@ class MediaActions extends ConsumerWidget {
       error: (_, __) => const SizedBox.shrink(),
       data: (catalog) {
         final model = catalog.find(modelId);
-        if (model == null) return const SizedBox.shrink();
-        final caps = model.capabilities;
+        final caps = model?.capabilities ?? const <ModelCapability>{};
+        final hasImageModels =
+            catalog.byCapability(ModelCapability.image).isNotEmpty;
         final buttons = <Widget>[];
-        if (caps.contains(ModelCapability.image)) {
+        if (hasImageModels) {
           buttons.add(
             _ActionButton(
               icon: Icons.image_outlined,
@@ -45,6 +47,7 @@ class MediaActions extends ConsumerWidget {
                 context,
                 ref,
                 kind: ModelCapability.image,
+                catalog: catalog,
               ),
             ),
           );
@@ -58,6 +61,7 @@ class MediaActions extends ConsumerWidget {
                 context,
                 ref,
                 kind: ModelCapability.audio,
+                catalog: catalog,
               ),
             ),
           );
@@ -71,6 +75,7 @@ class MediaActions extends ConsumerWidget {
                 context,
                 ref,
                 kind: ModelCapability.video,
+                catalog: catalog,
               ),
             ),
           );
@@ -85,36 +90,87 @@ class MediaActions extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref, {
     required ModelCapability kind,
+    required ModelCatalog catalog,
   }) async {
     final controller = TextEditingController(text: promptHint ?? '');
-    final prompt = await showDialog<String>(
+    final imageModels = catalog.byCapability(ModelCapability.image);
+    var selectedImageId = imageModels.any((m) => m.id == modelId)
+        ? modelId
+        : (imageModels.isNotEmpty ? imageModels.first.id : modelId);
+
+    final choice = await showDialog<({String prompt, String model})>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Generate ${kind.name}'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Describe what to generate…',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Generate'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setLocal) {
+            return AlertDialog(
+              title: Text('Generate ${kind.name}'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (kind == ModelCapability.image && imageModels.isNotEmpty)
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedImageId,
+                        decoration: const InputDecoration(
+                          labelText: 'Image model',
+                        ),
+                        items: [
+                          for (final m in imageModels)
+                            DropdownMenuItem(
+                              value: m.id,
+                              child: Text('${m.name} · ${m.providerType.name}'),
+                            ),
+                        ],
+                        onChanged: (id) {
+                          if (id == null) return;
+                          setLocal(() => selectedImageId = id);
+                        },
+                      ),
+                    if (kind == ModelCapability.image) const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        hintText: 'Describe what to generate…',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final prompt = controller.text.trim();
+                    if (prompt.isEmpty) return;
+                    Navigator.pop(
+                      context,
+                      (
+                        prompt: prompt,
+                        model: kind == ModelCapability.image
+                            ? selectedImageId
+                            : modelId,
+                      ),
+                    );
+                  },
+                  child: const Text('Generate'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
     controller.dispose();
-    if (prompt == null || prompt.isEmpty || !context.mounted) return;
+    if (choice == null || !context.mounted) return;
+    final prompt = choice.prompt;
+    final requestModelId = choice.model;
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
@@ -126,7 +182,7 @@ class MediaActions extends ConsumerWidget {
         catalog: await ref.read(modelCatalogProvider.future),
         providers: ref.read(providerRepositoryProvider),
         vault: ref.read(keyVaultProvider),
-        modelId: modelId,
+        modelId: requestModelId,
       );
       if (provider == null) {
         throw StateError('Add a provider API key in Settings first.');
@@ -136,15 +192,15 @@ class MediaActions extends ConsumerWidget {
       switch (kind) {
         case ModelCapability.image:
           result = await provider.generateImage(
-            ImageRequest(model: modelId, prompt: prompt),
+            ImageRequest(model: requestModelId, prompt: prompt),
           );
         case ModelCapability.audio:
           result = await provider.generateAudio(
-            AudioRequest(model: modelId, input: prompt),
+            AudioRequest(model: requestModelId, input: prompt),
           );
         case ModelCapability.video:
           result = await provider.generateVideo(
-            VideoRequest(model: modelId, prompt: prompt),
+            VideoRequest(model: requestModelId, prompt: prompt),
           );
         default:
           throw StateError('Unsupported media kind');

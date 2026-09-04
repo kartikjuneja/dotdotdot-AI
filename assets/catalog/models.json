@@ -33,7 +33,25 @@
     "capabilities": ["image"],
     "streaming": false,
     "experimental": false,
-    "notes": "Newer OpenAI image generation model."
+    "notes": "OpenAI Images API generation and editing."
+  },
+  {
+    "id": "gpt-image-1-mini",
+    "providerType": "openai",
+    "name": "GPT Image 1 mini",
+    "capabilities": ["image"],
+    "streaming": false,
+    "experimental": false,
+    "notes": "Lower-cost GPT Image model via Images API."
+  },
+  {
+    "id": "gpt-image-2",
+    "providerType": "openai",
+    "name": "GPT Image 2",
+    "capabilities": ["image"],
+    "streaming": false,
+    "experimental": false,
+    "notes": "Latest OpenAI image generation and editing model."
   },
   {
     "id": "tts-1",
@@ -54,40 +72,49 @@
     "notes": "Experimental text-to-video. Availability and API shape may change."
   },
   {
-    "id": "gemini-2.0-flash",
+    "id": "gemini-3.6-flash",
     "providerType": "gemini",
-    "name": "Gemini 2.0 Flash",
+    "name": "Gemini 3.6 Flash",
     "capabilities": ["chat"],
     "streaming": true,
     "experimental": false,
-    "notes": "Fast Gemini chat via streamGenerateContent."
+    "notes": "Current Gemini Flash chat model via streamGenerateContent."
   },
   {
-    "id": "gemini-2.0-flash-preview-image-generation",
+    "id": "gemini-3.5-flash",
     "providerType": "gemini",
-    "name": "Gemini 2.0 Flash Image Preview",
+    "name": "Gemini 3.5 Flash",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Gemini 3.5 Flash chat via streamGenerateContent."
+  },
+  {
+    "id": "gemini-3.1-flash-lite",
+    "providerType": "gemini",
+    "name": "Gemini 3.1 Flash-Lite",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Cost-efficient Gemini chat model."
+  },
+  {
+    "id": "gemini-3.1-flash-image",
+    "providerType": "gemini",
+    "name": "Gemini 3.1 Flash Image",
     "capabilities": ["chat", "image"],
     "streaming": true,
-    "experimental": true,
-    "notes": "Chat plus native image generation (responseModalities)."
-  },
-  {
-    "id": "imagen-3.0-generate-002",
-    "providerType": "gemini",
-    "name": "Imagen 3",
-    "capabilities": ["image"],
-    "streaming": false,
     "experimental": false,
-    "notes": "Google Imagen text-to-image via predict."
+    "notes": "Nano Banana 2 — conversational image generation via generateContent."
   },
   {
-    "id": "veo-experimental",
+    "id": "gemini-3-pro-image",
     "providerType": "gemini",
-    "name": "Veo (experimental)",
-    "capabilities": ["video"],
-    "streaming": false,
-    "experimental": true,
-    "notes": "Experimental video generation; not wired in this adapter yet."
+    "name": "Gemini 3 Pro Image",
+    "capabilities": ["chat", "image"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Nano Banana Pro — high-fidelity image generation via generateContent."
   },
   {
     "id": "openai/gpt-4o",
@@ -99,22 +126,31 @@
     "notes": "OpenAI GPT-4o routed through OpenRouter."
   },
   {
-    "id": "google/gemini-flash-1.5",
+    "id": "openai/gpt-4o-mini",
     "providerType": "openrouter",
-    "name": "Gemini Flash 1.5 (OpenRouter)",
+    "name": "GPT-4o mini (OpenRouter)",
     "capabilities": ["chat"],
     "streaming": true,
     "experimental": false,
-    "notes": "Google Gemini Flash via OpenRouter."
+    "notes": "Cost-efficient OpenAI chat via OpenRouter."
   },
   {
-    "id": "black-forest-labs/flux",
+    "id": "google/gemini-3.5-flash",
     "providerType": "openrouter",
-    "name": "FLUX (OpenRouter)",
-    "capabilities": ["image"],
-    "streaming": false,
+    "name": "Gemini 3.5 Flash (OpenRouter)",
+    "capabilities": ["chat"],
+    "streaming": true,
     "experimental": false,
-    "notes": "Black Forest Labs FLUX image models on OpenRouter."
+    "notes": "Google Gemini 3.5 Flash via OpenRouter."
+  },
+  {
+    "id": "google/gemini-3.6-flash",
+    "providerType": "openrouter",
+    "name": "Gemini 3.6 Flash (OpenRouter)",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Google Gemini 3.6 Flash via OpenRouter."
   },
   {
     "id": "anthropic/claude-3.5-sonnet",
@@ -135,21 +171,39 @@
     "notes": "Meta Llama instruct via OpenRouter."
   },
   {
-    "id": "openai/gpt-4o-mini",
+    "id": "black-forest-labs/flux.1-schnell",
     "providerType": "openrouter",
-    "name": "GPT-4o mini (OpenRouter)",
-    "capabilities": ["chat"],
-    "streaming": true,
+    "name": "FLUX.1 Schnell (OpenRouter)",
+    "capabilities": ["image"],
+    "streaming": false,
     "experimental": false,
-    "notes": "Cost-efficient OpenAI chat via OpenRouter."
+    "notes": "Fast Black Forest Labs FLUX image model on OpenRouter."
   },
   {
-    "id": "google/gemini-2.0-flash-exp:free",
+    "id": "black-forest-labs/flux.1-dev",
     "providerType": "openrouter",
-    "name": "Gemini 2.0 Flash Exp (OpenRouter)",
-    "capabilities": ["chat"],
-    "streaming": true,
-    "experimental": true,
-    "notes": "Experimental Gemini flash route; free tier when available."
+    "name": "FLUX.1 Dev (OpenRouter)",
+    "capabilities": ["image"],
+    "streaming": false,
+    "experimental": false,
+    "notes": "Higher-quality FLUX image model on OpenRouter."
+  },
+  {
+    "id": "openai/gpt-image-1",
+    "providerType": "openrouter",
+    "name": "GPT Image 1 (OpenRouter)",
+    "capabilities": ["image"],
+    "streaming": false,
+    "experimental": false,
+    "notes": "OpenAI image generation routed through OpenRouter."
+  },
+  {
+    "id": "google/gemini-2.5-flash-image",
+    "providerType": "openrouter",
+    "name": "Gemini Flash Image (OpenRouter)",
+    "capabilities": ["image"],
+    "streaming": false,
+    "experimental": false,
+    "notes": "Google native image generation via OpenRouter."
   }
 ]

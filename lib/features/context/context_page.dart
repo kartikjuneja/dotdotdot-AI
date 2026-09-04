@@ -5,8 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../core/scope_keys.dart';
+import '../../domain/models/chat.dart';
 import '../../domain/models/context_doc.dart';
 import '../../domain/models/memory_item.dart';
+import '../../domain/models/plan_node.dart';
+import '../../domain/models/project.dart';
 
 class ContextPage extends ConsumerStatefulWidget {
   const ContextPage({super.key});
@@ -18,14 +21,13 @@ class ContextPage extends ConsumerStatefulWidget {
 class _ContextPageState extends ConsumerState<ContextPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
-  late final TextEditingController _scopeIdCtrl;
   ContextScopeKind _scopeKind = ContextScopeKind.global;
+  String? _scopeId;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
-    _scopeIdCtrl = TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final q = GoRouterState.of(context).uri.queryParameters;
       final scope = q['scope'];
@@ -35,7 +37,7 @@ class _ContextPageState extends ConsumerState<ContextPage>
         try {
           setState(() {
             _scopeKind = ContextScopeKind.fromJson(scope);
-            _scopeIdCtrl.text = scopeId ?? '';
+            _scopeId = scopeId;
           });
         } catch (_) {}
       }
@@ -48,18 +50,25 @@ class _ContextPageState extends ConsumerState<ContextPage>
   @override
   void dispose() {
     _tabs.dispose();
-    _scopeIdCtrl.dispose();
     super.dispose();
   }
 
-  String? get _scopeId {
-    if (_scopeKind == ContextScopeKind.global) return null;
-    final v = _scopeIdCtrl.text.trim();
-    return v.isEmpty ? null : v;
+  void _setScope(ContextScopeKind kind, {String? scopeId}) {
+    setState(() {
+      _scopeKind = kind;
+      _scopeId = kind == ContextScopeKind.global ? null : scopeId;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final projects =
+        ref.watch(projectsStreamProvider).valueOrNull ?? const <Project>[];
+    final plans =
+        ref.watch(allPlansStreamProvider).valueOrNull ?? const <PlanNode>[];
+    final chats =
+        ref.watch(chatsStreamProvider).valueOrNull ?? const <Chat>[];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -73,7 +82,9 @@ class _ContextPageState extends ConsumerState<ContextPage>
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
           child: Text(
-            'Merged into chat prompts: global → project → plan ancestors → chat.',
+            'Notes and pins are attached to a place you can name — this app, '
+            'a project, a plan, or a chat. They are merged into prompts '
+            'automatically (chat → plan → project → global).',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: DotColors.textSecondary,
                 ),
@@ -88,33 +99,28 @@ class _ContextPageState extends ConsumerState<ContextPage>
             children: [
               for (final kind in ContextScopeKind.values)
                 ChoiceChip(
-                  label: Text(kind.name),
+                  label: Text(_kindLabel(kind)),
                   selected: _scopeKind == kind,
-                  onSelected: (_) {
-                    setState(() {
-                      _scopeKind = kind;
-                      if (kind == ContextScopeKind.global) {
-                        _scopeIdCtrl.clear();
-                      }
-                    });
-                  },
-                ),
-              if (_scopeKind != ContextScopeKind.global)
-                SizedBox(
-                  width: 220,
-                  child: TextField(
-                    controller: _scopeIdCtrl,
-                    decoration: InputDecoration(
-                      labelText: '${_scopeKind.name} id',
-                      hintText: 'Paste scope id',
-                      isDense: true,
-                    ),
-                    onChanged: (_) => setState(() {}),
+                  onSelected: (_) => _setScope(
+                    kind,
+                    scopeId: _defaultIdFor(kind, projects, plans, chats),
                   ),
                 ),
             ],
           ),
         ),
+        if (_scopeKind != ContextScopeKind.global)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+            child: _ScopePicker(
+              kind: _scopeKind,
+              selectedId: _scopeId,
+              projects: projects,
+              plans: plans,
+              chats: chats,
+              onSelected: (id) => _setScope(_scopeKind, scopeId: id),
+            ),
+          ),
         TabBar(
           controller: _tabs,
           labelColor: DotColors.ink,
@@ -136,6 +142,129 @@ class _ContextPageState extends ConsumerState<ContextPage>
       ],
     );
   }
+
+  String? _defaultIdFor(
+    ContextScopeKind kind,
+    List<Project> projects,
+    List<PlanNode> plans,
+    List<Chat> chats,
+  ) {
+    return switch (kind) {
+      ContextScopeKind.global => null,
+      ContextScopeKind.project =>
+        projects.isEmpty ? null : projects.first.id,
+      ContextScopeKind.plan => plans.isEmpty
+          ? null
+          : (plans.where((n) => n.parentId == null).isNotEmpty
+              ? plans.firstWhere((n) => n.parentId == null).id
+              : plans.first.id),
+      ContextScopeKind.chat => chats.isEmpty ? null : chats.first.id,
+    };
+  }
+}
+
+String _kindLabel(ContextScopeKind kind) => switch (kind) {
+      ContextScopeKind.global => 'This app',
+      ContextScopeKind.project => 'A project',
+      ContextScopeKind.plan => 'A plan',
+      ContextScopeKind.chat => 'A chat',
+    };
+
+class _ScopePicker extends StatelessWidget {
+  const _ScopePicker({
+    required this.kind,
+    required this.selectedId,
+    required this.projects,
+    required this.plans,
+    required this.chats,
+    required this.onSelected,
+  });
+
+  final ContextScopeKind kind;
+  final String? selectedId;
+  final List<Project> projects;
+  final List<PlanNode> plans;
+  final List<Chat> chats;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = switch (kind) {
+      ContextScopeKind.global => const <DropdownMenuItem<String>>[],
+      ContextScopeKind.project => [
+          for (final p in projects)
+            DropdownMenuItem(value: p.id, child: Text(p.name)),
+        ],
+      ContextScopeKind.plan => [
+          for (final n in _sortedPlans(plans))
+            DropdownMenuItem(
+              value: n.id,
+              child: Text(
+                n.parentId == null ? n.title : '↳ ${n.title}',
+              ),
+            ),
+        ],
+      ContextScopeKind.chat => [
+          for (final c in chats)
+            DropdownMenuItem(value: c.id, child: Text(c.title)),
+        ],
+    };
+
+    if (items.isEmpty) {
+      final hint = switch (kind) {
+        ContextScopeKind.project => 'Create a project first, then add notes here.',
+        ContextScopeKind.plan => 'Create a plan first, or generate one from a chat with /plan.',
+        ContextScopeKind.chat => 'Start a chat, then attach notes to it.',
+        ContextScopeKind.global => '',
+      };
+      return Text(hint, style: Theme.of(context).textTheme.bodyMedium);
+    }
+
+    final value = items.any((i) => i.value == selectedId) ? selectedId : null;
+
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: switch (kind) {
+          ContextScopeKind.project => 'Which project?',
+          ContextScopeKind.plan => 'Which plan?',
+          ContextScopeKind.chat => 'Which chat?',
+          ContextScopeKind.global => '',
+        },
+        isDense: true,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: value,
+          hint: const Text('Choose by name'),
+          items: items,
+          onChanged: onSelected,
+        ),
+      ),
+    );
+  }
+
+  List<PlanNode> _sortedPlans(List<PlanNode> plans) {
+    final roots = plans.where((n) => n.parentId == null).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final out = <PlanNode>[];
+    void walk(PlanNode node) {
+      out.add(node);
+      final kids = plans.where((n) => n.parentId == node.id).toList()
+        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      for (final k in kids) {
+        walk(k);
+      }
+    }
+
+    for (final r in roots) {
+      walk(r);
+    }
+    for (final n in plans) {
+      if (!out.any((e) => e.id == n.id)) out.add(n);
+    }
+    return out;
+  }
 }
 
 class _ContextDocsPane extends ConsumerWidget {
@@ -151,12 +280,15 @@ class _ContextDocsPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!_scopeOk) {
-      return const Center(
-        child: Text('Enter a scope id for project / plan / chat context.'),
+      return Center(
+        child: Text(
+          'Pick ${_kindLabel(scopeKind).toLowerCase()} above — no ids needed.',
+        ),
       );
     }
 
-    final docsAsync = ref.watch(_contextDocsProvider((scopeKind, scopeId)));
+    final docsAsync =
+        ref.watch(contextDocsByScopeProvider((scopeKind, scopeId)));
 
     return Column(
       children: [
@@ -297,8 +429,10 @@ class _MemoryPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!_scopeOk) {
-      return const Center(
-        child: Text('Enter a scope id for project / plan / chat memory.'),
+      return Center(
+        child: Text(
+          'Pick ${_kindLabel(scopeKind).toLowerCase()} above — no ids needed.',
+        ),
       );
     }
 
@@ -408,16 +542,8 @@ class _MemoryPane extends ConsumerWidget {
   }
 }
 
-typedef _ScopeKey = (ContextScopeKind, String?);
-
-final _contextDocsProvider =
-    StreamProvider.family<List<ContextDoc>, _ScopeKey>((ref, key) {
-  final (kind, id) = key;
-  return ref.watch(contextRepositoryProvider).watchByScope(kind, scopeId: id);
-});
-
 final _memoryProvider =
-    StreamProvider.family<List<MemoryItem>, _ScopeKey>((ref, key) {
+    StreamProvider.family<List<MemoryItem>, ScopeKey>((ref, key) {
   final (kind, id) = key;
   return ref.watch(memoryRepositoryProvider).watchByScope(kind, scopeId: id);
 });

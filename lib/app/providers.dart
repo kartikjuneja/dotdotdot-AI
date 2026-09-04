@@ -9,6 +9,7 @@ import '../ai/providers/provider_factory.dart';
 import '../ai/routing/model_router.dart';
 import '../core/clock.dart';
 import '../core/ids.dart';
+import '../core/scope_keys.dart';
 import '../data/db/app_database.dart';
 import '../data/db/sembast_chat_repository.dart';
 import '../data/db/sembast_context_repository.dart';
@@ -20,7 +21,9 @@ import '../data/db/sembast_provider_repository.dart';
 import '../data/secure/key_vault.dart';
 import '../data/sync/drive_sync_service.dart';
 import '../domain/models/chat.dart';
+import '../domain/models/context_doc.dart';
 import '../domain/models/model_info.dart';
+import '../domain/models/plan_node.dart';
 import '../domain/models/provider_account.dart';
 import '../domain/repositories/chat_repository.dart';
 import '../domain/repositories/context_repository.dart';
@@ -29,8 +32,10 @@ import '../domain/repositories/message_repository.dart';
 import '../domain/repositories/plan_repository.dart';
 import '../domain/repositories/project_repository.dart';
 import '../domain/repositories/provider_repository.dart';
+import '../domain/services/chat_command_service.dart';
 import '../domain/services/context_merge_service.dart';
 import '../domain/services/memory_service.dart';
+import '../domain/services/plan_generate_service.dart';
 import '../domain/services/plan_patch_service.dart';
 
 final clockProvider = Provider<Clock>((ref) => const SystemClock());
@@ -68,6 +73,12 @@ final contextMergeServiceProvider =
 
 final planPatchServiceProvider =
     Provider<PlanPatchService>((ref) => const PlanPatchService());
+
+final planGenerateServiceProvider =
+    Provider<PlanGenerateService>((ref) => const PlanGenerateService());
+
+final chatCommandServiceProvider =
+    Provider<ChatCommandService>((ref) => const ChatCommandService());
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   final db = ref.watch(databaseProvider).requireValue;
@@ -120,6 +131,20 @@ final projectsStreamProvider = StreamProvider((ref) {
   return ref.watch(projectRepositoryProvider).watchAll();
 });
 
+final allPlansStreamProvider = StreamProvider<List<PlanNode>>((ref) {
+  return ref.watch(planRepositoryProvider).watchAll();
+});
+
+typedef ScopeKey = (ContextScopeKind, String?);
+
+final contextDocsByScopeProvider =
+    StreamProvider.family<List<ContextDoc>, ScopeKey>((ref, key) {
+  return ref.watch(contextRepositoryProvider).watchByScope(
+        key.$1,
+        scopeId: key.$2,
+      );
+});
+
 final providerAccountsStreamProvider = StreamProvider<List<ProviderAccount>>((
   ref,
 ) {
@@ -165,10 +190,28 @@ Future<AiProvider?> resolveAiProvider({
   return ProviderFactory.create(account, key);
 }
 
-String defaultChatModelId(ModelCatalog catalog) {
-  final chatModels = catalog.byCapability(ModelCapability.chat);
-  if (chatModels.isEmpty) return 'gpt-4o-mini';
-  final preferred = chatModels.where((m) => m.id.contains('mini'));
+String defaultChatModelId(
+  ModelCatalog catalog, {
+  Iterable<ProviderAccount> accounts = const [],
+}) {
+  final enabledTypes = accounts
+      .where((a) => a.enabled && !a.isDeleted)
+      .map((a) => a.providerType)
+      .toSet();
+  var chatModels = catalog.byCapability(ModelCapability.chat);
+  if (enabledTypes.isNotEmpty) {
+    final matching = chatModels
+        .where((m) => enabledTypes.contains(m.providerType))
+        .toList(growable: false);
+    if (matching.isNotEmpty) chatModels = matching;
+  }
+  if (chatModels.isEmpty) return 'gemini-3.6-flash';
+  final preferred = chatModels.where(
+    (m) =>
+        m.id.contains('mini') ||
+        m.id.contains('flash-lite') ||
+        m.id.contains('flash'),
+  );
   if (preferred.isNotEmpty) return preferred.first.id;
   return chatModels.first.id;
 }
@@ -183,13 +226,14 @@ Future<Chat> createNewChat(
   final clock = ref.read(clockProvider);
   final ids = ref.read(uuidProvider);
   final catalog = await ref.read(modelCatalogProvider.future);
+  final accounts = await ref.read(providerRepositoryProvider).list();
   final now = clock.now();
   final chat = Chat(
     id: ids.next(),
     title: title ?? 'New chat',
     projectId: projectId,
     planNodeId: planNodeId,
-    modelId: modelId ?? defaultChatModelId(catalog),
+    modelId: modelId ?? defaultChatModelId(catalog, accounts: accounts),
     createdAt: now,
     updatedAt: now,
   );

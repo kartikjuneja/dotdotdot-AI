@@ -11,6 +11,8 @@ import '../../domain/models/chat.dart';
 import '../../domain/models/context_doc.dart';
 import '../../domain/models/memory_item.dart';
 import '../../domain/models/message.dart';
+import '../../domain/services/chat_command_service.dart';
+import '../../domain/services/plan_generate_service.dart';
 
 class ChatViewState {
   const ChatViewState({
@@ -19,6 +21,8 @@ class ChatViewState {
     this.isStreaming = false,
     this.error,
     this.composerText = '',
+    this.createdPlanId,
+    this.createdPlanTitle,
   });
 
   final Chat? chat;
@@ -26,6 +30,8 @@ class ChatViewState {
   final bool isStreaming;
   final String? error;
   final String composerText;
+  final String? createdPlanId;
+  final String? createdPlanTitle;
 
   ChatViewState copyWith({
     Chat? chat,
@@ -33,6 +39,8 @@ class ChatViewState {
     bool? isStreaming,
     Object? error = _unset,
     String? composerText,
+    Object? createdPlanId = _unset,
+    Object? createdPlanTitle = _unset,
   }) {
     return ChatViewState(
       chat: chat ?? this.chat,
@@ -40,6 +48,12 @@ class ChatViewState {
       isStreaming: isStreaming ?? this.isStreaming,
       error: identical(error, _unset) ? this.error : error as String?,
       composerText: composerText ?? this.composerText,
+      createdPlanId: identical(createdPlanId, _unset)
+          ? this.createdPlanId
+          : createdPlanId as String?,
+      createdPlanTitle: identical(createdPlanTitle, _unset)
+          ? this.createdPlanTitle
+          : createdPlanTitle as String?,
     );
   }
 }
@@ -94,6 +108,10 @@ class ChatController extends FamilyNotifier<ChatViewState, String> {
     state = state.copyWith(composerText: text);
   }
 
+  void clearCreatedPlanBanner() {
+    state = state.copyWith(createdPlanId: null, createdPlanTitle: null);
+  }
+
   Future<void> setModelId(String modelId) async {
     final chat = state.chat;
     if (chat == null) return;
@@ -105,10 +123,35 @@ class ChatController extends FamilyNotifier<ChatViewState, String> {
     state = state.copyWith(chat: updated);
   }
 
-  Future<void> sendMessage([String? overrideText]) async {
+  Future<void> setProjectId(String? projectId) async {
+    final chat = state.chat;
+    if (chat == null) return;
+    final updated = chat.copyWith(
+      projectId: projectId,
+      updatedAt: ref.read(clockProvider).now(),
+    );
+    await ref.read(chatRepositoryProvider).save(updated);
+    state = state.copyWith(chat: updated);
+  }
+
+  Future<void> setPlanNodeId(String? planNodeId) async {
+    final chat = state.chat;
+    if (chat == null) return;
+    final updated = chat.copyWith(
+      planNodeId: planNodeId,
+      updatedAt: ref.read(clockProvider).now(),
+    );
+    await ref.read(chatRepositoryProvider).save(updated);
+    state = state.copyWith(chat: updated);
+  }
+
+  Future<void> sendMessage({
+    String? overrideText,
+    bool generatePlan = false,
+  }) async {
     if (_sending || state.isStreaming) return;
-    final text = (overrideText ?? state.composerText).trim();
-    if (text.isEmpty) return;
+    final raw = (overrideText ?? state.composerText).trim();
+    if (raw.isEmpty && !generatePlan) return;
 
     final chat = state.chat;
     if (chat == null) {
@@ -116,8 +159,28 @@ class ChatController extends FamilyNotifier<ChatViewState, String> {
       return;
     }
 
+    final parsed = ref.read(chatCommandServiceProvider).parse(
+          raw.isEmpty ? '/plan' : raw,
+        );
+    if (parsed.kind == ChatCommandKind.unknown) {
+      state = state.copyWith(
+        error: 'Unknown command /${parsed.unknownName}. Try /plan or /course.',
+      );
+      return;
+    }
+    final wantPlan = generatePlan || parsed.generatePlan;
+    final userText = raw.isEmpty && generatePlan
+        ? 'Generate a nested plan/course from this conversation.'
+        : parsed.displayText;
+
     _sending = true;
-    state = state.copyWith(composerText: '', error: null, isStreaming: true);
+    state = state.copyWith(
+      composerText: '',
+      error: null,
+      isStreaming: true,
+      createdPlanId: null,
+      createdPlanTitle: null,
+    );
 
     final clock = ref.read(clockProvider);
     final ids = ref.read(uuidProvider);
@@ -128,7 +191,7 @@ class ChatController extends FamilyNotifier<ChatViewState, String> {
       id: ids.next(),
       chatId: chatId,
       role: MessageRole.user,
-      text: text,
+      text: userText,
       status: MessageStatus.complete,
       createdAt: now,
     );
@@ -136,8 +199,9 @@ class ChatController extends FamilyNotifier<ChatViewState, String> {
 
     // Auto-title from first user message.
     if (chat.title == 'New chat') {
-      final title =
-          text.length > 48 ? '${text.substring(0, 48).trimRight()}…' : text;
+      final title = userText.length > 48
+          ? '${userText.substring(0, 48).trimRight()}…'
+          : userText;
       final titled = chat.copyWith(title: title, updatedAt: now);
       await ref.read(chatRepositoryProvider).save(titled);
       state = state.copyWith(chat: titled);
@@ -164,11 +228,14 @@ class ChatController extends FamilyNotifier<ChatViewState, String> {
       );
       if (provider == null) {
         throw StateError(
-          'No provider key configured. Add an API key in Settings.',
+          'No matching API key. Add a key for this model in Settings.',
         );
       }
 
-      final systemPrompt = await _buildSystemPrompt(chat);
+      final systemPrompt = await _buildSystemPrompt(
+        state.chat ?? chat,
+        forcePlanCreate: wantPlan,
+      );
       final persisted = await messageRepo.listByChat(chatId);
       final history = <ChatMessageDto>[
         if (systemPrompt.trim().isNotEmpty)
@@ -215,8 +282,10 @@ class ChatController extends FamilyNotifier<ChatViewState, String> {
       await ref.read(chatRepositoryProvider).save(updatedChat);
       state = state.copyWith(chat: updatedChat, isStreaming: false);
 
-      if (chat.planNodeId != null) {
-        await _tryApplyPlanPatch(chat.planNodeId!, finalText);
+      await _trySaveGeneratedPlan(updatedChat, finalText);
+      final linkedId = (state.chat ?? updatedChat).planNodeId;
+      if (linkedId != null) {
+        await _tryApplyPlanPatch(linkedId, finalText);
       }
     } catch (e, st) {
       AppLog.e('Chat send failed', error: e, stackTrace: st);
@@ -235,7 +304,10 @@ class ChatController extends FamilyNotifier<ChatViewState, String> {
     }
   }
 
-  Future<String> _buildSystemPrompt(Chat chat) async {
+  Future<String> _buildSystemPrompt(
+    Chat chat, {
+    bool forcePlanCreate = false,
+  }) async {
     final contextRepo = ref.read(contextRepositoryProvider);
     final memoryRepo = ref.read(memoryRepositoryProvider);
     final merge = ref.read(contextMergeServiceProvider);
@@ -300,18 +372,42 @@ class ChatController extends FamilyNotifier<ChatViewState, String> {
       chatMemory: chatMemory,
     );
 
-    if (chat.planNodeId != null) {
-      prompt = '''
-$prompt
-
-When you update the linked plan, include a fenced JSON block:
-```plan-patch
-{"title":"...","body":"...","progress":0,"status":"active"}
-```
-Only include fields you intend to change.
-'''.trim();
-    }
+    prompt = [
+      if (prompt.trim().isNotEmpty) prompt.trim(),
+      planCreateSystemAddendum,
+      if (chat.planNodeId != null) planPatchSystemAddendum,
+      if (forcePlanCreate)
+        'The user asked you to generate a plan NOW. Emit a ```plan-create``` block.',
+    ].join('\n\n');
     return prompt;
+  }
+
+  Future<void> _trySaveGeneratedPlan(Chat chat, String assistantText) async {
+    try {
+      final generate = ref.read(planGenerateServiceProvider);
+      final draft = generate.extractFromAssistantText(assistantText);
+      if (draft == null) return;
+      final root = await generate.persistTree(
+        draft: draft,
+        repo: ref.read(planRepositoryProvider),
+        ids: ref.read(uuidProvider),
+        clock: ref.read(clockProvider),
+        projectId: chat.projectId,
+      );
+      final linked = chat.copyWith(
+        planNodeId: root.id,
+        updatedAt: ref.read(clockProvider).now(),
+      );
+      await ref.read(chatRepositoryProvider).save(linked);
+      state = state.copyWith(
+        chat: linked,
+        createdPlanId: root.id,
+        createdPlanTitle: root.title,
+      );
+      AppLog.i('Saved generated plan ${root.id}');
+    } catch (e, st) {
+      AppLog.w('Plan create skipped', error: e, stackTrace: st);
+    }
   }
 
   Future<void> _tryApplyPlanPatch(String planNodeId, String assistantText) async {

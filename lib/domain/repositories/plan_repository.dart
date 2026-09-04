@@ -3,6 +3,8 @@ import '../models/plan_node.dart';
 abstract class PlanRepository {
   Future<PlanNode?> getById(String id, {bool includeDeleted = false});
 
+  Future<List<PlanNode>> listAll({bool includeDeleted = false});
+
   Future<List<PlanNode>> listByProject(
     String? projectId, {
     bool includeDeleted = false,
@@ -29,6 +31,8 @@ abstract class PlanRepository {
   Future<PlanNode> save(PlanNode node);
 
   Future<void> softDelete(String id, {required DateTime deletedAt});
+
+  Stream<List<PlanNode>> watchAll({bool includeDeleted = false});
 
   Stream<List<PlanNode>> watchByProject(
     String? projectId, {

@@ -61,11 +61,70 @@ class ChatListPane extends ConsumerWidget {
               projectName: project?.name,
               selected: selected,
               onTap: () => context.go('/chat/${chat.id}'),
+              onRename: () => _renameChat(context, ref, chat),
+              onDelete: () => _deleteChat(context, ref, chat),
+              onNotes: () => context.go(
+                '/context?scope=chat&scopeId=${chat.id}',
+              ),
             );
           },
         );
       },
     );
+  }
+}
+
+Future<void> _renameChat(BuildContext context, WidgetRef ref, Chat chat) async {
+  final ctrl = TextEditingController(text: chat.title);
+  final next = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Rename chat'),
+      content: TextField(controller: ctrl, autofocus: true),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  ctrl.dispose();
+  if (next == null || next.isEmpty) return;
+  await ref.read(chatRepositoryProvider).save(
+        chat.copyWith(title: next, updatedAt: ref.read(clockProvider).now()),
+      );
+}
+
+Future<void> _deleteChat(BuildContext context, WidgetRef ref, Chat chat) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Delete chat?'),
+      content: Text('“${chat.title}” will be removed from this device.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  await ref.read(chatRepositoryProvider).softDelete(
+        chat.id,
+        deletedAt: ref.read(clockProvider).now(),
+      );
+  if (context.mounted && GoRouterState.of(context).uri.path == '/chat/${chat.id}') {
+    context.go('/');
   }
 }
 
@@ -79,6 +138,9 @@ class _ChatTile extends StatelessWidget {
     required this.chat,
     required this.selected,
     required this.onTap,
+    required this.onRename,
+    required this.onDelete,
+    required this.onNotes,
     this.projectName,
   });
 
@@ -86,6 +148,9 @@ class _ChatTile extends StatelessWidget {
   final String? projectName;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback onRename;
+  final VoidCallback onDelete;
+  final VoidCallback onNotes;
 
   @override
   Widget build(BuildContext context) {
@@ -132,6 +197,29 @@ class _ChatTile extends StatelessWidget {
               fontSize: 11,
             ),
           ),
+        ],
+      ),
+      trailing: PopupMenuButton<String>(
+        padding: EdgeInsets.zero,
+        icon: Icon(
+          Icons.more_vert,
+          size: 18,
+          color: DotColors.paper.withOpacity(0.55),
+        ),
+        onSelected: (value) {
+          switch (value) {
+            case 'notes':
+              onNotes();
+            case 'rename':
+              onRename();
+            case 'delete':
+              onDelete();
+          }
+        },
+        itemBuilder: (_) => const [
+          PopupMenuItem(value: 'notes', child: Text('Add notes')),
+          PopupMenuItem(value: 'rename', child: Text('Rename')),
+          PopupMenuItem(value: 'delete', child: Text('Delete')),
         ],
       ),
     );

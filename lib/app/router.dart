@@ -106,7 +106,9 @@ class _HomeLanding extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Local-first AI studio. Start a chat or open a project from the sidebar.',
+                'Local-first AI studio. Recent chats stay in the sidebar. '
+                'Type /plan in a chat to save a course, or attach a project by name '
+                'so its notes are included automatically.',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withOpacity(0.7),
                 ),

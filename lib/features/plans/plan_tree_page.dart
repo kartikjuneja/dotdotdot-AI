@@ -45,6 +45,14 @@ class PlanTreePage extends ConsumerWidget {
                 ),
               ),
               OutlinedButton.icon(
+                onPressed: () => context.go(
+                  '/context?scope=plan&scopeId=${root.id}',
+                ),
+                icon: const Icon(Icons.notes_outlined, size: 18),
+                label: const Text('Notes'),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
                 onPressed: () => openNewChat(
                   context,
                   ref,
