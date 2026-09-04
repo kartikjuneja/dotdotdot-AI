@@ -1,0 +1,155 @@
+[
+  {
+    "id": "gpt-4o",
+    "providerType": "openai",
+    "name": "GPT-4o",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Flagship multimodal chat model with streaming."
+  },
+  {
+    "id": "gpt-4o-mini",
+    "providerType": "openai",
+    "name": "GPT-4o mini",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Fast, lower-cost chat model."
+  },
+  {
+    "id": "dall-e-3",
+    "providerType": "openai",
+    "name": "DALL·E 3",
+    "capabilities": ["image"],
+    "streaming": false,
+    "experimental": false,
+    "notes": "Text-to-image via Images API."
+  },
+  {
+    "id": "gpt-image-1",
+    "providerType": "openai",
+    "name": "GPT Image 1",
+    "capabilities": ["image"],
+    "streaming": false,
+    "experimental": false,
+    "notes": "Newer OpenAI image generation model."
+  },
+  {
+    "id": "tts-1",
+    "providerType": "openai",
+    "name": "TTS-1",
+    "capabilities": ["audio"],
+    "streaming": false,
+    "experimental": false,
+    "notes": "Text-to-speech via Audio Speech API."
+  },
+  {
+    "id": "sora",
+    "providerType": "openai",
+    "name": "Sora (experimental)",
+    "capabilities": ["video"],
+    "streaming": false,
+    "experimental": true,
+    "notes": "Experimental text-to-video. Availability and API shape may change."
+  },
+  {
+    "id": "gemini-2.0-flash",
+    "providerType": "gemini",
+    "name": "Gemini 2.0 Flash",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Fast Gemini chat via streamGenerateContent."
+  },
+  {
+    "id": "gemini-2.0-flash-preview-image-generation",
+    "providerType": "gemini",
+    "name": "Gemini 2.0 Flash Image Preview",
+    "capabilities": ["chat", "image"],
+    "streaming": true,
+    "experimental": true,
+    "notes": "Chat plus native image generation (responseModalities)."
+  },
+  {
+    "id": "imagen-3.0-generate-002",
+    "providerType": "gemini",
+    "name": "Imagen 3",
+    "capabilities": ["image"],
+    "streaming": false,
+    "experimental": false,
+    "notes": "Google Imagen text-to-image via predict."
+  },
+  {
+    "id": "veo-experimental",
+    "providerType": "gemini",
+    "name": "Veo (experimental)",
+    "capabilities": ["video"],
+    "streaming": false,
+    "experimental": true,
+    "notes": "Experimental video generation; not wired in this adapter yet."
+  },
+  {
+    "id": "openai/gpt-4o",
+    "providerType": "openrouter",
+    "name": "GPT-4o (OpenRouter)",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "OpenAI GPT-4o routed through OpenRouter."
+  },
+  {
+    "id": "google/gemini-flash-1.5",
+    "providerType": "openrouter",
+    "name": "Gemini Flash 1.5 (OpenRouter)",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Google Gemini Flash via OpenRouter."
+  },
+  {
+    "id": "black-forest-labs/flux",
+    "providerType": "openrouter",
+    "name": "FLUX (OpenRouter)",
+    "capabilities": ["image"],
+    "streaming": false,
+    "experimental": false,
+    "notes": "Black Forest Labs FLUX image models on OpenRouter."
+  },
+  {
+    "id": "anthropic/claude-3.5-sonnet",
+    "providerType": "openrouter",
+    "name": "Claude 3.5 Sonnet (OpenRouter)",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Anthropic Claude via OpenRouter."
+  },
+  {
+    "id": "meta-llama/llama-3.1-70b-instruct",
+    "providerType": "openrouter",
+    "name": "Llama 3.1 70B (OpenRouter)",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Meta Llama instruct via OpenRouter."
+  },
+  {
+    "id": "openai/gpt-4o-mini",
+    "providerType": "openrouter",
+    "name": "GPT-4o mini (OpenRouter)",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": false,
+    "notes": "Cost-efficient OpenAI chat via OpenRouter."
+  },
+  {
+    "id": "google/gemini-2.0-flash-exp:free",
+    "providerType": "openrouter",
+    "name": "Gemini 2.0 Flash Exp (OpenRouter)",
+    "capabilities": ["chat"],
+    "streaming": true,
+    "experimental": true,
+    "notes": "Experimental Gemini flash route; free tier when available."
+  }
+]
